@@ -5,13 +5,10 @@ import {
   Banknote,
   Building2,
   LocateFixed,
-  MapPinned,
-  ReceiptText,
   RefreshCcw,
   Search,
   Store,
   Table2,
-  Tags,
 } from 'lucide-react'
 import {
   formatNumber,
@@ -32,10 +29,6 @@ interface RentFilters {
   query: string
   status: 'all' | 'Lease' | 'LOI'
   property: string
-  minRent: number
-  maxRent: number
-  minNnn: number
-  maxNnn: number
 }
 
 interface SaleFilters {
@@ -58,10 +51,6 @@ const initialRentFilters: RentFilters = {
   query: '',
   status: 'all',
   property: 'all',
-  minRent: 0,
-  maxRent: 60,
-  minNnn: 0,
-  maxNnn: 20,
 }
 
 const initialSaleFilters: SaleFilters = {
@@ -87,15 +76,11 @@ function App() {
   const filteredRent = useMemo(() => {
     return leaseComps.filter((comp) => {
       const point = pointById.get(comp.pointId)
-      const rent = leaseRentMidpoint(comp)
-      const nnn = comp.nnn
       const haystack = `${comp.tenant} ${comp.property} ${point?.address ?? ''}`.toLowerCase()
       return (
         haystack.includes(rentFilters.query.toLowerCase()) &&
         (rentFilters.status === 'all' || comp.status === rentFilters.status) &&
-        (rentFilters.property === 'all' || comp.property === rentFilters.property) &&
-        (rent == null || (rent >= rentFilters.minRent && rent <= rentFilters.maxRent)) &&
-        (nnn == null || (nnn >= rentFilters.minNnn && nnn <= rentFilters.maxNnn))
+        (rentFilters.property === 'all' || comp.property === rentFilters.property)
       )
     })
   }, [rentFilters])
@@ -196,51 +181,50 @@ function App() {
 
   return (
     <div className={`app-shell ${activeView}`}>
-      <aside className="left-rail">
-        <div className="brand-block">
-          <div className="brand-mark">
-            <MapPinned size={22} />
-          </div>
-          <div>
-            <h1>The Row Retail Comps</h1>
-            <p>Separate rent and sale workspaces</p>
-          </div>
-        </div>
-
-        <nav className="workspace-nav" aria-label="Comp workspaces">
-          <button className={activeView === 'rent' ? 'active' : ''} onClick={() => switchView('rent')}>
-            <Store size={18} />
-            <span>
-              <strong>Rent Comps</strong>
-              <small>{leaseComps.length} tenant records</small>
-            </span>
-          </button>
-          <button className={activeView === 'sale' ? 'active' : ''} onClick={() => switchView('sale')}>
-            <Banknote size={18} />
-            <span>
-              <strong>Sale Comps</strong>
-              <small>{saleComps.length} property records</small>
-            </span>
-          </button>
-        </nav>
-
-        {activeView === 'rent' ? (
-          <RentFiltersPanel filters={rentFilters} properties={rentProperties} onChange={setRentFilters} />
-        ) : (
-          <SaleFiltersPanel filters={saleFilters} cities={saleCities} onChange={setSaleFilters} />
-        )}
-
-        <section className="source-note">
-          <strong>Source basis</strong>
-          <p>Rent: The Row - Lease Comps.pdf. Sales: The_Row_Sale_Comps.pdf. Map points use ArcGIS geocodes with specific manual refinements for Easton Park and Burleson Crossing East.</p>
-        </section>
-      </aside>
+      <AppHeader
+        kpis={
+          activeView === 'rent'
+            ? [
+                ['Tenant records', formatNumber(rentKpis.count)],
+                ['Avg base rent', rentKpis.avgRent == null ? '-' : `$${rentKpis.avgRent.toFixed(2)}/SF`],
+                ['Avg NNN', rentKpis.avgNnn == null ? '-' : `$${rentKpis.avgNnn.toFixed(2)}/SF`],
+                ['Avg TI', rentKpis.avgTi == null ? '-' : `$${rentKpis.avgTi.toFixed(0)}/SF`],
+              ]
+            : [
+                ['Property records', formatNumber(saleKpis.count)],
+                ['Avg sale $/SF', saleKpis.avgPsf == null ? '-' : `$${saleKpis.avgPsf.toFixed(0)}`],
+                ['Avg cap rate', saleKpis.avgCap == null ? '-' : `${saleKpis.avgCap.toFixed(2)}%`],
+                ['Known volume', `$${formatNumber(Math.round(saleKpis.totalVolume / 1000000))}M`],
+              ]
+        }
+      />
 
       <main className="workspace">
+        <section className="control-bar">
+          <div className="mode-control">
+            <span className="control-label">Mode</span>
+            <nav className="workspace-nav" aria-label="Comp workspaces">
+              <button className={activeView === 'rent' ? 'active' : ''} onClick={() => switchView('rent')}>
+                <Store size={17} />
+                Rent Comps
+              </button>
+              <button className={activeView === 'sale' ? 'active' : ''} onClick={() => switchView('sale')}>
+                <Banknote size={17} />
+                Sale Comps
+              </button>
+            </nav>
+          </div>
+
+          {activeView === 'rent' ? (
+            <RentFiltersPanel filters={rentFilters} properties={rentProperties} onChange={setRentFilters} />
+          ) : (
+            <SaleFiltersPanel filters={saleFilters} cities={saleCities} onChange={setSaleFilters} />
+          )}
+        </section>
+
         {activeView === 'rent' ? (
           <RentWorkspace
             bundles={bundles}
-            kpis={rentKpis}
             rows={rentRows}
             selectedBundle={selectedBundle}
             selectedPointId={selectedBundle?.point.id ?? ''}
@@ -251,7 +235,6 @@ function App() {
         ) : (
           <SaleWorkspace
             bundles={bundles}
-            kpis={saleKpis}
             rows={saleRows}
             selectedBundle={selectedBundle}
             selectedPointId={selectedBundle?.point.id ?? ''}
@@ -261,219 +244,28 @@ function App() {
           />
         )}
       </main>
+
+      <footer className="source-footer">
+        <strong>Source basis:</strong> Rent: The Row - Lease Comps.pdf. Sales: The_Row_Sale_Comps.pdf. Map points use ArcGIS geocodes with manual refinements for Easton Park and Burleson Crossing East.
+      </footer>
     </div>
   )
 }
 
-function RentFiltersPanel({ filters, properties, onChange }: { filters: RentFilters; properties: string[]; onChange: (filters: RentFilters) => void }) {
+function AppHeader({ kpis }: { kpis: [string, string][] }) {
   return (
-    <section className="filter-section rent-filter">
-      <div className="section-title">
-        <ReceiptText size={16} />
-        <span>Rent filters</span>
+    <header className="app-header">
+      <div className="brand-heading">
+        <div className="brand-lockup">
+          <span className="presidium-mark">P</span>
+          <span>PRESIDIUM</span>
+        </div>
+        <h1>The Row Retail Comps</h1>
+        <p>Retail rent and sale evidence for SH 71 &amp; SH 130</p>
       </div>
-      <label className="input-row">
-        <Search size={15} />
-        <input value={filters.query} onChange={(event) => onChange({ ...filters, query: event.target.value })} placeholder="Search tenant, property, address" />
-      </label>
-      <label>
-        <span>Lease status</span>
-        <select value={filters.status} onChange={(event) => onChange({ ...filters, status: event.target.value as RentFilters['status'] })}>
-          <option value="all">Lease + LOI</option>
-          <option value="Lease">Executed leases</option>
-          <option value="LOI">LOIs only</option>
-        </select>
-      </label>
-      <label>
-        <span>Property cluster</span>
-        <select value={filters.property} onChange={(event) => onChange({ ...filters, property: event.target.value })}>
-          <option value="all">All rent clusters</option>
-          {properties.map((property) => (
-            <option key={property} value={property}>
-              {property}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="range-grid">
-        <label>
-          <span>Min rent</span>
-          <input type="number" value={filters.minRent} onChange={(event) => onChange({ ...filters, minRent: Number(event.target.value) })} />
-        </label>
-        <label>
-          <span>Max rent</span>
-          <input type="number" value={filters.maxRent} onChange={(event) => onChange({ ...filters, maxRent: Number(event.target.value) })} />
-        </label>
-      </div>
-      <div className="range-grid">
-        <label>
-          <span>Min NNN</span>
-          <input type="number" value={filters.minNnn} onChange={(event) => onChange({ ...filters, minNnn: Number(event.target.value) })} />
-        </label>
-        <label>
-          <span>Max NNN</span>
-          <input type="number" value={filters.maxNnn} onChange={(event) => onChange({ ...filters, maxNnn: Number(event.target.value) })} />
-        </label>
-      </div>
-      <button className="reset-button" onClick={() => onChange(initialRentFilters)}>
-        <RefreshCcw size={15} />
-        Reset rent filters
-      </button>
-    </section>
-  )
-}
-
-function SaleFiltersPanel({ filters, cities, onChange }: { filters: SaleFilters; cities: string[]; onChange: (filters: SaleFilters) => void }) {
-  return (
-    <section className="filter-section sale-filter">
-      <div className="section-title">
-        <Tags size={16} />
-        <span>Sale filters</span>
-      </div>
-      <label className="input-row">
-        <Search size={15} />
-        <input value={filters.query} onChange={(event) => onChange({ ...filters, query: event.target.value })} placeholder="Search property, city, tenant" />
-      </label>
-      <label>
-        <span>Market</span>
-        <select value={filters.city} onChange={(event) => onChange({ ...filters, city: event.target.value })}>
-          <option value="all">All sale markets</option>
-          {cities.map((city) => (
-            <option key={city} value={city}>
-              {city}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>Sale type</span>
-        <select value={filters.category} onChange={(event) => onChange({ ...filters, category: event.target.value as SaleFilters['category'] })}>
-          <option value="all">All sale comps</option>
-          <option value="Unanchored Strip">Unanchored strip</option>
-          <option value="Lifestyle / Power Center">Lifestyle / power center</option>
-        </select>
-      </label>
-      <div className="range-grid">
-        <label>
-          <span>Min $/SF</span>
-          <input type="number" value={filters.minPsf} onChange={(event) => onChange({ ...filters, minPsf: Number(event.target.value) })} />
-        </label>
-        <label>
-          <span>Max $/SF</span>
-          <input type="number" value={filters.maxPsf} onChange={(event) => onChange({ ...filters, maxPsf: Number(event.target.value) })} />
-        </label>
-      </div>
-      <label>
-        <span>Max cap rate</span>
-        <input type="range" min="5" max="8" step="0.05" value={filters.maxCap} onChange={(event) => onChange({ ...filters, maxCap: Number(event.target.value) })} />
-        <strong>{filters.maxCap.toFixed(2)}%</strong>
-      </label>
-      <label>
-        <span>Min occupancy</span>
-        <input type="range" min="0" max="100" step="1" value={filters.minOccupancy} onChange={(event) => onChange({ ...filters, minOccupancy: Number(event.target.value) })} />
-        <strong>{filters.minOccupancy.toFixed(0)}%</strong>
-      </label>
-      <button className="reset-button" onClick={() => onChange(initialSaleFilters)}>
-        <RefreshCcw size={15} />
-        Reset sale filters
-      </button>
-    </section>
-  )
-}
-
-function RentWorkspace({
-  bundles,
-  kpis,
-  rows,
-  selectedBundle,
-  selectedPointId,
-  sortKey,
-  onSelect,
-  onSort,
-}: {
-  bundles: PointBundle[]
-  kpis: { count: number; avgRent: number | null; avgNnn: number | null; avgTi: number | null }
-  rows: ReturnType<typeof buildRentRows>
-  selectedBundle?: PointBundle
-  selectedPointId: string
-  sortKey: SortKey
-  onSelect: (id: string) => void
-  onSort: (key: SortKey) => void
-}) {
-  return (
-    <>
-      <WorkspaceHeader
-        accent="rent"
-        title="Rent Comps"
-        subtitle="Tenant-level lease comparables and LOIs"
-        kpis={[
-          ['Tenant records', formatNumber(kpis.count)],
-          ['Avg base rent', kpis.avgRent == null ? '-' : `$${kpis.avgRent.toFixed(2)}/SF`],
-          ['Avg NNN', kpis.avgNnn == null ? '-' : `$${kpis.avgNnn.toFixed(2)}/SF`],
-          ['Avg TI', kpis.avgTi == null ? '-' : `$${kpis.avgTi.toFixed(0)}/SF`],
-        ]}
-      />
-      <section className="workspace-grid">
-        <MapCard mode="rent" bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
-        <RentDetail bundle={selectedBundle} />
-      </section>
-      <RentTable rows={rows} sortKey={sortKey} onSort={onSort} onSelect={onSelect} />
-    </>
-  )
-}
-
-function SaleWorkspace({
-  bundles,
-  kpis,
-  rows,
-  selectedBundle,
-  selectedPointId,
-  sortKey,
-  onSelect,
-  onSort,
-}: {
-  bundles: PointBundle[]
-  kpis: { count: number; avgPsf: number | null; avgCap: number | null; avgOcc: number | null; totalVolume: number }
-  rows: ReturnType<typeof buildSaleRows>
-  selectedBundle?: PointBundle
-  selectedPointId: string
-  sortKey: SortKey
-  onSelect: (id: string) => void
-  onSort: (key: SortKey) => void
-}) {
-  return (
-    <>
-      <WorkspaceHeader
-        accent="sale"
-        title="Sale Comps"
-        subtitle="Property-level transactions and pricing evidence"
-        kpis={[
-          ['Property records', formatNumber(kpis.count)],
-          ['Avg sale $/SF', kpis.avgPsf == null ? '-' : `$${kpis.avgPsf.toFixed(0)}`],
-          ['Avg cap rate', kpis.avgCap == null ? '-' : `${kpis.avgCap.toFixed(2)}%`],
-          ['Known volume', `$${formatNumber(Math.round(kpis.totalVolume / 1000000))}M`],
-        ]}
-      />
-      <section className="workspace-grid">
-        <MapCard mode="sale" bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
-        <SaleDetail bundle={selectedBundle} />
-      </section>
-      <SaleTable rows={rows} sortKey={sortKey} onSort={onSort} onSelect={onSelect} />
-    </>
-  )
-}
-
-function WorkspaceHeader({ accent, title, subtitle, kpis }: { accent: ActiveView; title: string; subtitle: string; kpis: [string, string][] }) {
-  return (
-    <header className={`workspace-header ${accent}`}>
-      <div>
-        <p className="date-line">Compiled June 19, 2026</p>
-        <h2>{title}</h2>
-        <p>{subtitle}</p>
-      </div>
-      <div className="kpi-strip">
+      <div className="header-kpis">
         {kpis.map(([label, value]) => (
-          <div className="kpi" key={label}>
+          <div className="header-kpi" key={label}>
             <span>{label}</span>
             <strong>{value}</strong>
           </div>
@@ -483,20 +275,179 @@ function WorkspaceHeader({ accent, title, subtitle, kpis }: { accent: ActiveView
   )
 }
 
+function RentFiltersPanel({ filters, properties, onChange }: { filters: RentFilters; properties: string[]; onChange: (filters: RentFilters) => void }) {
+  return (
+    <section className="filter-section rent-filter">
+      <label className="control-field search-field">
+        <span className="control-label">Search</span>
+        <span className="input-row">
+          <input value={filters.query} onChange={(event) => onChange({ ...filters, query: event.target.value })} placeholder="Search tenant, property, or address..." />
+          <Search size={16} />
+        </span>
+      </label>
+      <label className="control-field">
+        <span className="control-label">Status</span>
+        <select value={filters.status} onChange={(event) => onChange({ ...filters, status: event.target.value as RentFilters['status'] })}>
+          <option value="all">Lease + LOI</option>
+          <option value="Lease">Executed leases</option>
+          <option value="LOI">LOIs only</option>
+        </select>
+      </label>
+      <label className="control-field">
+        <span className="control-label">Property cluster</span>
+        <select value={filters.property} onChange={(event) => onChange({ ...filters, property: event.target.value })}>
+          <option value="all">All rent clusters</option>
+          {properties.map((property) => (
+            <option key={property} value={property}>
+              {property}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button className="reset-button" onClick={() => onChange(initialRentFilters)}>
+        <RefreshCcw size={15} />
+        Reset
+      </button>
+    </section>
+  )
+}
+
+function SaleFiltersPanel({ filters, cities, onChange }: { filters: SaleFilters; cities: string[]; onChange: (filters: SaleFilters) => void }) {
+  return (
+    <section className="filter-section sale-filter">
+      <label className="control-field search-field">
+        <span className="control-label">Search</span>
+        <span className="input-row">
+          <input value={filters.query} onChange={(event) => onChange({ ...filters, query: event.target.value })} placeholder="Search property, city, or tenant..." />
+          <Search size={16} />
+        </span>
+      </label>
+      <label className="control-field">
+        <span className="control-label">Market</span>
+        <select value={filters.city} onChange={(event) => onChange({ ...filters, city: event.target.value })}>
+          <option value="all">All sale markets</option>
+          {cities.map((city) => (
+            <option key={city} value={city}>
+              {city}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="control-field">
+        <span className="control-label">Sale type</span>
+        <select value={filters.category} onChange={(event) => onChange({ ...filters, category: event.target.value as SaleFilters['category'] })}>
+          <option value="all">All sale comps</option>
+          <option value="Unanchored Strip">Unanchored strip</option>
+          <option value="Lifestyle / Power Center">Lifestyle / power center</option>
+        </select>
+      </label>
+      <div className="range-grid compact-range">
+        <label className="control-field">
+          <span className="control-label">Min $/SF</span>
+          <input type="number" value={filters.minPsf} onChange={(event) => onChange({ ...filters, minPsf: Number(event.target.value) })} />
+        </label>
+        <label className="control-field">
+          <span className="control-label">Max $/SF</span>
+          <input type="number" value={filters.maxPsf} onChange={(event) => onChange({ ...filters, maxPsf: Number(event.target.value) })} />
+        </label>
+      </div>
+      <label className="control-field range-field optional-filter">
+        <span className="control-label">Max cap rate <strong>{filters.maxCap.toFixed(2)}%</strong></span>
+        <input type="range" min="5" max="8" step="0.05" value={filters.maxCap} onChange={(event) => onChange({ ...filters, maxCap: Number(event.target.value) })} />
+      </label>
+      <label className="control-field range-field optional-filter">
+        <span className="control-label">Min occupancy <strong>{filters.minOccupancy.toFixed(0)}%</strong></span>
+        <input type="range" min="0" max="100" step="1" value={filters.minOccupancy} onChange={(event) => onChange({ ...filters, minOccupancy: Number(event.target.value) })} />
+      </label>
+      <button className="reset-button" onClick={() => onChange(initialSaleFilters)}>
+        <RefreshCcw size={15} />
+        Reset
+      </button>
+    </section>
+  )
+}
+
+function RentWorkspace({
+  bundles,
+  rows,
+  selectedBundle,
+  selectedPointId,
+  sortKey,
+  onSelect,
+  onSort,
+}: {
+  bundles: PointBundle[]
+  rows: ReturnType<typeof buildRentRows>
+  selectedBundle?: PointBundle
+  selectedPointId: string
+  sortKey: SortKey
+  onSelect: (id: string) => void
+  onSort: (key: SortKey) => void
+}) {
+  const hasDetail = selectedBundle?.point.kind !== 'target'
+  return (
+    <>
+      <section className={`workspace-grid ${hasDetail ? '' : 'map-only'}`}>
+        <MapCard mode="rent" bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
+        {hasDetail ? <RentDetail bundle={selectedBundle} /> : null}
+      </section>
+      <RentTable rows={rows} sortKey={sortKey} onSort={onSort} onSelect={onSelect} />
+    </>
+  )
+}
+
+function SaleWorkspace({
+  bundles,
+  rows,
+  selectedBundle,
+  selectedPointId,
+  sortKey,
+  onSelect,
+  onSort,
+}: {
+  bundles: PointBundle[]
+  rows: ReturnType<typeof buildSaleRows>
+  selectedBundle?: PointBundle
+  selectedPointId: string
+  sortKey: SortKey
+  onSelect: (id: string) => void
+  onSort: (key: SortKey) => void
+}) {
+  const hasDetail = selectedBundle?.point.kind !== 'target'
+  return (
+    <>
+      <section className={`workspace-grid ${hasDetail ? '' : 'map-only'}`}>
+        <MapCard mode="sale" bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
+        {hasDetail ? <SaleDetail bundle={selectedBundle} /> : null}
+      </section>
+      <SaleTable rows={rows} sortKey={sortKey} onSort={onSort} onSelect={onSelect} />
+    </>
+  )
+}
+
 function MapCard({ mode, bundles, selectedPointId, onSelect }: { mode: ActiveView; bundles: PointBundle[]; selectedPointId: string; onSelect: (id: string) => void }) {
   return (
     <div className="map-panel">
-      <MapView mode={mode} bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
-      <div className="map-legend">
-        <span><i className="dot target" /> The Row</span>
-        <span><i className={`dot ${mode}`} /> {mode === 'rent' ? 'Rent comp' : 'Sale comp'}</span>
+      <div className="panel-header">
+        <div>
+          <h2>Comp Map</h2>
+          <p>{mode === 'rent' ? 'Tenant lease evidence and LOIs' : 'Retail transaction evidence'}</p>
+        </div>
+        <div className="map-count">{bundles.length} locations</div>
+      </div>
+      <div className="map-frame">
+        <MapView mode={mode} bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
+        <div className="map-legend">
+          <span><i className="dot target" /> The Row</span>
+          <span><i className={`dot ${mode}`} /> {mode === 'rent' ? 'Rent comp' : 'Sale comp'}</span>
+        </div>
       </div>
     </div>
   )
 }
 
 function RentDetail({ bundle }: { bundle?: PointBundle }) {
-  if (!bundle) return null
+  if (!bundle || bundle.point.kind === 'target') return null
   const rents = bundle.rent.map(leaseRentMidpoint).filter(isNumber)
   return (
     <aside className="detail-panel rent-detail">
@@ -505,7 +456,6 @@ function RentDetail({ bundle }: { bundle?: PointBundle }) {
         <Metric label="Tenant records" value={formatNumber(bundle.rent.length)} />
         <Metric label="Avg base rent" value={rents.length ? `$${average(rents)!.toFixed(2)}/SF` : '-'} />
       </div>
-      {bundle.point.kind === 'target' ? <TargetNote mode="rent" /> : null}
       <CompList
         title="Tenant records"
         empty="No rent records at this point."
@@ -517,7 +467,7 @@ function RentDetail({ bundle }: { bundle?: PointBundle }) {
 }
 
 function SaleDetail({ bundle }: { bundle?: PointBundle }) {
-  if (!bundle) return null
+  if (!bundle || bundle.point.kind === 'target') return null
   const psf = bundle.sale.map((comp) => comp.psf).filter(isNumber)
   const caps = bundle.sale.map((comp) => comp.capRate).filter(isNumber)
   return (
@@ -529,7 +479,6 @@ function SaleDetail({ bundle }: { bundle?: PointBundle }) {
         <Metric label="Avg cap" value={caps.length ? `${average(caps)!.toFixed(2)}%` : '-'} />
         <Metric label="Market" value={bundle.point.city} />
       </div>
-      {bundle.point.kind === 'target' ? <TargetNote mode="sale" /> : null}
       <CompList
         title="Property records"
         empty="No sale records at this point."
@@ -550,15 +499,6 @@ function DetailTitle({ point, mode }: { point: MapPoint; mode: ActiveView }) {
         <h3>{point.name}</h3>
         <p>{point.address} - {point.city}</p>
       </div>
-    </div>
-  )
-}
-
-function TargetNote({ mode }: { mode: ActiveView }) {
-  return (
-    <div className="target-card">
-      <strong>The Row reference point</strong>
-      <p>{mode === 'rent' ? 'Use this anchor to compare tenant rent evidence near Southeast Austin and nearby retail clusters.' : 'Use this anchor to compare sale pricing across Austin, San Antonio, and Central Texas retail assets.'}</p>
     </div>
   )
 }
@@ -601,7 +541,7 @@ function MapNote({ note }: { note: string }) {
 function RentTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeof buildRentRows>; sortKey: SortKey; onSort: (key: SortKey) => void; onSelect: (id: string) => void }) {
   return (
     <section className="table-panel rent-table">
-      <TableHeader count={rows.length} label="rent records" sortKey={sortKey} onSort={onSort} />
+      <TableHeader title="Visible Rent Records" count={rows.length} label="rent records" sortKey={sortKey} onSort={onSort} />
       <div className="table-wrap">
         <table>
           <thead>
@@ -639,7 +579,7 @@ function RentTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeo
 function SaleTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeof buildSaleRows>; sortKey: SortKey; onSort: (key: SortKey) => void; onSelect: (id: string) => void }) {
   return (
     <section className="table-panel sale-table">
-      <TableHeader count={rows.length} label="sale records" sortKey={sortKey} onSort={onSort} />
+      <TableHeader title="Visible Sale Records" count={rows.length} label="sale records" sortKey={sortKey} onSort={onSort} />
       <div className="table-wrap">
         <table>
           <thead>
@@ -678,12 +618,15 @@ function SaleTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeo
   )
 }
 
-function TableHeader({ count, label, sortKey, onSort }: { count: number; label: string; sortKey: SortKey; onSort: (key: SortKey) => void }) {
+function TableHeader({ title, count, label, sortKey, onSort }: { title: string; count: number; label: string; sortKey: SortKey; onSort: (key: SortKey) => void }) {
   return (
     <div className="table-header">
       <div>
         <Table2 size={17} />
-        <span>{count} visible {label}</span>
+        <span>
+          <strong>{title}</strong>
+          <small>{count} visible {label}</small>
+        </span>
       </div>
       <div className="sort-buttons">
         {(['metric', 'sf', 'name', 'market'] as SortKey[]).map((key) => (
@@ -706,9 +649,9 @@ function MapView({ mode, bundles, selectedPointId, onSelect }: { mode: ActiveVie
     if (!containerRef.current || mapRef.current) return
     mapRef.current = L.map(containerRef.current, { zoomControl: false }).setView([30.22, -97.76], 9)
     L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
     }).addTo(mapRef.current)
     layerRef.current = L.layerGroup().addTo(mapRef.current)
     setTimeout(() => mapRef.current?.invalidateSize(), 100)
