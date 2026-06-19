@@ -236,7 +236,7 @@ function App() {
       </main>
 
       <footer className="source-footer">
-        <strong>Source basis:</strong> SRS Real Estate Partners
+        <strong>Data Source:</strong> SRS Real Estate Partners
       </footer>
     </div>
   )
