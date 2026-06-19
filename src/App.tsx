@@ -35,10 +35,6 @@ interface SaleFilters {
   query: string
   city: string
   category: 'all' | SaleComp['category']
-  minPsf: number
-  maxPsf: number
-  maxCap: number
-  minOccupancy: number
 }
 
 interface PointBundle {
@@ -57,10 +53,6 @@ const initialSaleFilters: SaleFilters = {
   query: '',
   city: 'all',
   category: 'all',
-  minPsf: 0,
-  maxPsf: 1000,
-  maxCap: 8,
-  minOccupancy: 0,
 }
 
 function App() {
@@ -91,10 +83,7 @@ function App() {
       return (
         haystack.includes(saleFilters.query.toLowerCase()) &&
         (saleFilters.city === 'all' || comp.city === saleFilters.city) &&
-        (saleFilters.category === 'all' || comp.category === saleFilters.category) &&
-        (comp.psf == null || (comp.psf >= saleFilters.minPsf && comp.psf <= saleFilters.maxPsf)) &&
-        (comp.capRate == null || comp.capRate <= saleFilters.maxCap) &&
-        (comp.occupancy == null || comp.occupancy >= saleFilters.minOccupancy)
+        (saleFilters.category === 'all' || comp.category === saleFilters.category)
       )
     })
   }, [saleFilters])
@@ -341,24 +330,6 @@ function SaleFiltersPanel({ filters, cities, onChange }: { filters: SaleFilters;
           <option value="Lifestyle / Power Center">Lifestyle / power center</option>
         </select>
       </label>
-      <div className="range-grid compact-range">
-        <label className="control-field">
-          <span className="control-label">Min $/SF</span>
-          <input type="number" value={filters.minPsf} onChange={(event) => onChange({ ...filters, minPsf: Number(event.target.value) })} />
-        </label>
-        <label className="control-field">
-          <span className="control-label">Max $/SF</span>
-          <input type="number" value={filters.maxPsf} onChange={(event) => onChange({ ...filters, maxPsf: Number(event.target.value) })} />
-        </label>
-      </div>
-      <label className="control-field range-field optional-filter">
-        <span className="control-label">Max cap rate <strong>{filters.maxCap.toFixed(2)}%</strong></span>
-        <input type="range" min="5" max="8" step="0.05" value={filters.maxCap} onChange={(event) => onChange({ ...filters, maxCap: Number(event.target.value) })} />
-      </label>
-      <label className="control-field range-field optional-filter">
-        <span className="control-label">Min occupancy <strong>{filters.minOccupancy.toFixed(0)}%</strong></span>
-        <input type="range" min="0" max="100" step="1" value={filters.minOccupancy} onChange={(event) => onChange({ ...filters, minOccupancy: Number(event.target.value) })} />
-      </label>
       <button className="reset-button" onClick={() => onChange(initialSaleFilters)}>
         <RefreshCcw size={15} />
         Reset
@@ -461,7 +432,6 @@ function RentDetail({ bundle }: { bundle?: PointBundle }) {
         empty="No rent records at this point."
         items={bundle.rent.map((comp) => `${comp.tenant}: ${comp.sfLabel}, ${comp.baseRentLabel} base rent, ${comp.nnnLabel} NNN, ${comp.status}`)}
       />
-      <MapNote note={bundle.point.geocodeNote} />
     </aside>
   )
 }
@@ -484,7 +454,6 @@ function SaleDetail({ bundle }: { bundle?: PointBundle }) {
         empty="No sale records at this point."
         items={bundle.sale.map((comp) => `${comp.property}: ${comp.psfLabel}/SF, ${comp.capRateLabel} cap, ${comp.salePriceLabel}, ${comp.saleDate}`)}
       />
-      <MapNote note={bundle.point.geocodeNote} />
     </aside>
   )
 }
@@ -525,15 +494,6 @@ function CompList({ title, items, empty }: { title: string; items: string[]; emp
       ) : (
         <p>{empty}</p>
       )}
-    </div>
-  )
-}
-
-function MapNote({ note }: { note: string }) {
-  return (
-    <div className="geocode-box">
-      <strong>Map note</strong>
-      <p>{note}</p>
     </div>
   )
 }

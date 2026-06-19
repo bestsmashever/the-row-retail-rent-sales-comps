@@ -541,8 +541,7 @@ input[type="range"] {
 }
 
 .detail-title p,
-.comp-list p,
-.geocode-box p {
+.comp-list p {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.45;
@@ -580,23 +579,6 @@ input[type="range"] {
   color: var(--ink);
   font-size: 15px;
   line-height: 1.18;
-  font-weight: 850;
-}
-
-.geocode-box {
-  margin-bottom: 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: 6px;
-  padding: 12px;
-  background: var(--panel-soft);
-}
-
-.geocode-box strong {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--ink);
-  font-size: 12px;
-  line-height: 1.2;
   font-weight: 850;
 }
 
