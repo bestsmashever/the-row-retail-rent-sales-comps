@@ -22,6 +22,7 @@ import {
   type SaleComp,
 } from './data'
 import presidiumLogo from './assets/presidium-logo.png'
+import theRowLogo from './assets/the-row-logo-clay.png'
 
 type ActiveView = 'rent' | 'sale'
 type SortKey = 'metric' | 'sf' | 'name' | 'market'
@@ -625,12 +626,13 @@ function MapView({ mode, bundles, selectedPointId, onSelect }: { mode: ActiveVie
       const { point } = bundle
       bounds.push([point.lat, point.lng])
       const count = mode === 'rent' ? bundle.rent.length : bundle.sale.length
-      const markerText = point.kind === 'target' ? 'T' : String(Math.max(count, 1))
+      const isTarget = point.kind === 'target'
+      const markerContent = isTarget ? `<img src="${theRowLogo}" alt="" />` : `<span>${String(Math.max(count, 1))}</span>`
       const icon = L.divIcon({
         className: '',
-        html: `<button class="map-marker ${point.kind === 'target' ? 'target' : mode} ${selectedPointId === point.id ? 'selected' : ''}" aria-label="${point.name}"><span>${markerText}</span></button>`,
-        iconSize: [34, 34],
-        iconAnchor: [17, 17],
+        html: `<button class="map-marker ${isTarget ? 'target' : mode} ${selectedPointId === point.id ? 'selected' : ''}" aria-label="${point.name}">${markerContent}</button>`,
+        iconSize: isTarget ? [72, 42] : [34, 34],
+        iconAnchor: isTarget ? [36, 21] : [17, 17],
       })
       L.marker([point.lat, point.lng], { icon })
         .addTo(layerRef.current!)

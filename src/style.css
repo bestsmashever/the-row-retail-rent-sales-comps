@@ -475,7 +475,18 @@ input[type="range"] {
 }
 
 .map-marker.target {
-  background: var(--navy-deep);
+  width: 72px;
+  height: 42px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.map-marker.target img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .map-marker.selected {
