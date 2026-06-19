@@ -236,7 +236,7 @@ function App() {
       </main>
 
       <footer className="source-footer">
-        <strong>Source basis:</strong> Rent: The Row - Lease Comps.pdf. Sales: The_Row_Sale_Comps.pdf. Map points use ArcGIS geocodes with manual refinements for Easton Park and Burleson Crossing East.
+        <strong>Source basis:</strong> SRS Real Estate Partners
       </footer>
     </div>
   )
