@@ -76,27 +76,14 @@ p {
 }
 
 .brand-lockup {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
+  display: block;
   margin-bottom: 12px;
-  font-size: 24px;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: 0.12em;
 }
 
-.presidium-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  border-radius: 999px;
-  color: var(--navy);
-  background: #ffffff;
-  font-size: 17px;
-  font-weight: 900;
-  letter-spacing: 0;
+.brand-lockup img {
+  display: block;
+  width: 176px;
+  height: auto;
 }
 
 .brand-heading h1 {
@@ -812,7 +799,11 @@ tbody tr:hover {
   }
 
   .brand-lockup {
-    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .brand-lockup img {
+    width: 156px;
   }
 
   .brand-heading h1 {

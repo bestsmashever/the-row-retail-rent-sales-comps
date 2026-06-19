@@ -21,6 +21,7 @@ import {
   type MapPoint,
   type SaleComp,
 } from './data'
+import presidiumLogo from './assets/presidium-logo.png'
 
 type ActiveView = 'rent' | 'sale'
 type SortKey = 'metric' | 'sf' | 'name' | 'market'
@@ -246,8 +247,7 @@ function AppHeader({ kpis }: { kpis: [string, string][] }) {
     <header className="app-header">
       <div className="brand-heading">
         <div className="brand-lockup">
-          <span className="presidium-mark">P</span>
-          <span>PRESIDIUM</span>
+          <img src={presidiumLogo} alt="Presidium" />
         </div>
         <h1>The Row Retail Comps</h1>
         <p>Retail rent and sale evidence for SH 71 &amp; SH 130</p>
