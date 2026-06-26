@@ -25,7 +25,7 @@ import presidiumLogo from './assets/presidium-logo.png'
 import theRowLogo from './assets/the-row-logo-clay.png'
 
 type ActiveView = 'rent' | 'sale'
-type SortKey = 'metric' | 'sf' | 'name' | 'market'
+type SortKey = 'map' | 'metric' | 'sf' | 'name' | 'market'
 
 interface RentFilters {
   query: string
@@ -62,7 +62,7 @@ function App() {
   const [rentFilters, setRentFilters] = useState<RentFilters>(initialRentFilters)
   const [saleFilters, setSaleFilters] = useState<SaleFilters>(initialSaleFilters)
   const [selectedPointId, setSelectedPointId] = useState('target-the-row')
-  const [sortKey, setSortKey] = useState<SortKey>('metric')
+  const [sortKey, setSortKey] = useState<SortKey>('map')
 
   const rentProperties = useMemo(() => Array.from(new Set(leaseComps.map((comp) => comp.property))).sort(), [])
   const saleCities = useMemo(() => Array.from(new Set(saleComps.map((comp) => comp.city))).sort(), [])
@@ -108,6 +108,17 @@ function App() {
     return Array.from(byPoint.values())
   }, [activeView, filteredRent, filteredSale])
 
+  const pointIndexById = useMemo(() => {
+    const indexById = new Map<string, number>()
+    let index = 1
+    bundles.forEach((bundle) => {
+      if (bundle.point.kind === 'target') return
+      indexById.set(bundle.point.id, index)
+      index += 1
+    })
+    return indexById
+  }, [bundles])
+
   const selectedBundle = bundles.find((bundle) => bundle.point.id === selectedPointId) ?? bundles[0]
 
   const rentKpis = useMemo(() => {
@@ -141,6 +152,7 @@ function App() {
       .map((comp) => ({
         id: comp.id,
         pointId: comp.pointId,
+        mapIndex: pointIndexById.get(comp.pointId) ?? Number.MAX_SAFE_INTEGER,
         name: comp.tenant,
         market: pointById.get(comp.pointId)?.city ?? '',
         metric: leaseRentMidpoint(comp) ?? -1,
@@ -148,13 +160,14 @@ function App() {
         comp,
       }))
       .sort((a, b) => compareRows(a, b, sortKey))
-  }, [filteredRent, sortKey])
+  }, [filteredRent, pointIndexById, sortKey])
 
   const saleRows = useMemo(() => {
     return filteredSale
       .map((comp) => ({
         id: comp.id,
         pointId: comp.pointId,
+        mapIndex: pointIndexById.get(comp.pointId) ?? Number.MAX_SAFE_INTEGER,
         name: comp.property,
         market: comp.city,
         metric: comp.psf ?? -1,
@@ -162,12 +175,12 @@ function App() {
         comp,
       }))
       .sort((a, b) => compareRows(a, b, sortKey))
-  }, [filteredSale, sortKey])
+  }, [filteredSale, pointIndexById, sortKey])
 
   const switchView = (view: ActiveView) => {
     setActiveView(view)
     setSelectedPointId('target-the-row')
-    setSortKey('metric')
+    setSortKey('map')
   }
 
   return (
@@ -216,6 +229,7 @@ function App() {
         {activeView === 'rent' ? (
           <RentWorkspace
             bundles={bundles}
+            pointIndexById={pointIndexById}
             rows={rentRows}
             selectedBundle={selectedBundle}
             selectedPointId={selectedBundle?.point.id ?? ''}
@@ -226,6 +240,7 @@ function App() {
         ) : (
           <SaleWorkspace
             bundles={bundles}
+            pointIndexById={pointIndexById}
             rows={saleRows}
             selectedBundle={selectedBundle}
             selectedPointId={selectedBundle?.point.id ?? ''}
@@ -341,6 +356,7 @@ function SaleFiltersPanel({ filters, cities, onChange }: { filters: SaleFilters;
 
 function RentWorkspace({
   bundles,
+  pointIndexById,
   rows,
   selectedBundle,
   selectedPointId,
@@ -349,6 +365,7 @@ function RentWorkspace({
   onSort,
 }: {
   bundles: PointBundle[]
+  pointIndexById: Map<string, number>
   rows: ReturnType<typeof buildRentRows>
   selectedBundle?: PointBundle
   selectedPointId: string
@@ -360,16 +377,17 @@ function RentWorkspace({
   return (
     <>
       <section className={`workspace-grid ${hasDetail ? '' : 'map-only'}`}>
-        <MapCard mode="rent" bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
+        <MapCard mode="rent" bundles={bundles} pointIndexById={pointIndexById} selectedPointId={selectedPointId} onSelect={onSelect} />
         {hasDetail ? <RentDetail bundle={selectedBundle} /> : null}
       </section>
-      <RentTable rows={rows} sortKey={sortKey} onSort={onSort} onSelect={onSelect} />
+      <RentTable rows={rows} pointIndexById={pointIndexById} sortKey={sortKey} onSort={onSort} onSelect={onSelect} />
     </>
   )
 }
 
 function SaleWorkspace({
   bundles,
+  pointIndexById,
   rows,
   selectedBundle,
   selectedPointId,
@@ -378,6 +396,7 @@ function SaleWorkspace({
   onSort,
 }: {
   bundles: PointBundle[]
+  pointIndexById: Map<string, number>
   rows: ReturnType<typeof buildSaleRows>
   selectedBundle?: PointBundle
   selectedPointId: string
@@ -389,15 +408,27 @@ function SaleWorkspace({
   return (
     <>
       <section className={`workspace-grid ${hasDetail ? '' : 'map-only'}`}>
-        <MapCard mode="sale" bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
+        <MapCard mode="sale" bundles={bundles} pointIndexById={pointIndexById} selectedPointId={selectedPointId} onSelect={onSelect} />
         {hasDetail ? <SaleDetail bundle={selectedBundle} /> : null}
       </section>
-      <SaleTable rows={rows} sortKey={sortKey} onSort={onSort} onSelect={onSelect} />
+      <SaleTable rows={rows} pointIndexById={pointIndexById} sortKey={sortKey} onSort={onSort} onSelect={onSelect} />
     </>
   )
 }
 
-function MapCard({ mode, bundles, selectedPointId, onSelect }: { mode: ActiveView; bundles: PointBundle[]; selectedPointId: string; onSelect: (id: string) => void }) {
+function MapCard({
+  mode,
+  bundles,
+  pointIndexById,
+  selectedPointId,
+  onSelect,
+}: {
+  mode: ActiveView
+  bundles: PointBundle[]
+  pointIndexById: Map<string, number>
+  selectedPointId: string
+  onSelect: (id: string) => void
+}) {
   return (
     <div className="map-panel">
       <div className="panel-header">
@@ -408,7 +439,7 @@ function MapCard({ mode, bundles, selectedPointId, onSelect }: { mode: ActiveVie
         <div className="map-count">{bundles.length} locations</div>
       </div>
       <div className="map-frame">
-        <MapView mode={mode} bundles={bundles} selectedPointId={selectedPointId} onSelect={onSelect} />
+        <MapView mode={mode} bundles={bundles} pointIndexById={pointIndexById} selectedPointId={selectedPointId} onSelect={onSelect} />
         <div className="map-legend">
           <span><i className="dot target" /> The Row</span>
           <span><i className={`dot ${mode}`} /> {mode === 'rent' ? 'Rent comp' : 'Sale comp'}</span>
@@ -499,7 +530,19 @@ function CompList({ title, items, empty }: { title: string; items: string[]; emp
   )
 }
 
-function RentTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeof buildRentRows>; sortKey: SortKey; onSort: (key: SortKey) => void; onSelect: (id: string) => void }) {
+function RentTable({
+  rows,
+  pointIndexById,
+  sortKey,
+  onSort,
+  onSelect,
+}: {
+  rows: ReturnType<typeof buildRentRows>
+  pointIndexById: Map<string, number>
+  sortKey: SortKey
+  onSort: (key: SortKey) => void
+  onSelect: (id: string) => void
+}) {
   return (
     <section className="table-panel rent-table">
       <TableHeader title="Visible Rent Records" count={rows.length} label="rent records" sortKey={sortKey} onSort={onSort} />
@@ -507,6 +550,7 @@ function RentTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeo
         <table>
           <thead>
             <tr>
+              <th className="map-index-header">#</th>
               <th>Tenant</th>
               <th>Property</th>
               <th>Status</th>
@@ -520,6 +564,7 @@ function RentTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeo
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} onClick={() => onSelect(row.pointId)}>
+                <td className="map-index-cell"><span className="table-marker-badge">{pointIndexById.get(row.pointId) ?? '-'}</span></td>
                 <td>{row.comp.tenant}</td>
                 <td>{row.comp.property}</td>
                 <td><span className="status-pill">{row.comp.status}</span></td>
@@ -537,7 +582,19 @@ function RentTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeo
   )
 }
 
-function SaleTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeof buildSaleRows>; sortKey: SortKey; onSort: (key: SortKey) => void; onSelect: (id: string) => void }) {
+function SaleTable({
+  rows,
+  pointIndexById,
+  sortKey,
+  onSort,
+  onSelect,
+}: {
+  rows: ReturnType<typeof buildSaleRows>
+  pointIndexById: Map<string, number>
+  sortKey: SortKey
+  onSort: (key: SortKey) => void
+  onSelect: (id: string) => void
+}) {
   return (
     <section className="table-panel sale-table">
       <TableHeader title="Visible Sale Records" count={rows.length} label="sale records" sortKey={sortKey} onSort={onSort} />
@@ -545,6 +602,7 @@ function SaleTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeo
         <table>
           <thead>
             <tr>
+              <th className="map-index-header">#</th>
               <th>Property</th>
               <th>Type</th>
               <th>City</th>
@@ -560,6 +618,7 @@ function SaleTable({ rows, sortKey, onSort, onSelect }: { rows: ReturnType<typeo
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} onClick={() => onSelect(row.pointId)}>
+                <td className="map-index-cell"><span className="table-marker-badge">{pointIndexById.get(row.pointId) ?? '-'}</span></td>
                 <td>{row.comp.property}</td>
                 <td>{row.comp.category}</td>
                 <td>{row.comp.city}</td>
@@ -590,10 +649,10 @@ function TableHeader({ title, count, label, sortKey, onSort }: { title: string; 
         </span>
       </div>
       <div className="sort-buttons">
-        {(['metric', 'sf', 'name', 'market'] as SortKey[]).map((key) => (
+        {(['map', 'metric', 'sf', 'name', 'market'] as SortKey[]).map((key) => (
           <button key={key} className={sortKey === key ? 'active' : ''} onClick={() => onSort(key)}>
             <ArrowUpDown size={13} />
-            {key === 'metric' ? 'Metric' : key === 'sf' ? 'SF' : key}
+            {key === 'map' ? '#' : key === 'metric' ? 'Metric' : key === 'sf' ? 'SF' : key}
           </button>
         ))}
       </div>
@@ -601,7 +660,19 @@ function TableHeader({ title, count, label, sortKey, onSort }: { title: string; 
   )
 }
 
-function MapView({ mode, bundles, selectedPointId, onSelect }: { mode: ActiveView; bundles: PointBundle[]; selectedPointId: string; onSelect: (id: string) => void }) {
+function MapView({
+  mode,
+  bundles,
+  pointIndexById,
+  selectedPointId,
+  onSelect,
+}: {
+  mode: ActiveView
+  bundles: PointBundle[]
+  pointIndexById: Map<string, number>
+  selectedPointId: string
+  onSelect: (id: string) => void
+}) {
   const mapRef = useRef<L.Map | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const layerRef = useRef<L.LayerGroup | null>(null)
@@ -627,29 +698,46 @@ function MapView({ mode, bundles, selectedPointId, onSelect }: { mode: ActiveVie
       bounds.push([point.lat, point.lng])
       const count = mode === 'rent' ? bundle.rent.length : bundle.sale.length
       const isTarget = point.kind === 'target'
-      const markerContent = isTarget ? `<img src="${theRowLogo}" alt="" />` : `<span>${String(Math.max(count, 1))}</span>`
+      const markerNumber = pointIndexById.get(point.id)
+      const markerContent = isTarget
+        ? `<img src="${theRowLogo}" alt="" />`
+        : `<span class="marker-label">${markerNumber ?? ''}</span>`
       const icon = L.divIcon({
         className: '',
-        html: `<button class="map-marker ${isTarget ? 'target' : mode} ${selectedPointId === point.id ? 'selected' : ''}" aria-label="${point.name}">${markerContent}</button>`,
-        iconSize: isTarget ? [72, 42] : [34, 34],
-        iconAnchor: isTarget ? [36, 21] : [17, 17],
+        html: `<button class="map-marker ${isTarget ? 'target' : mode} ${selectedPointId === point.id ? 'selected' : ''}" aria-label="${escapeHtml(point.name)}">${markerContent}</button>`,
+        iconSize: isTarget ? [76, 44] : [40, 40],
+        iconAnchor: isTarget ? [38, 22] : [20, 20],
       })
       L.marker([point.lat, point.lng], { icon })
         .addTo(layerRef.current!)
         .on('click', () => onSelect(point.id))
-        .bindTooltip(`${point.name}<br>${count} ${mode === 'rent' ? 'rent' : 'sale'} records`, { direction: 'top', offset: [0, -14] })
+        .bindTooltip(`${markerNumber ? `#${markerNumber} ` : ''}${escapeHtml(point.name)}<br>${count} ${mode === 'rent' ? 'rent' : 'sale'} ${count === 1 ? 'record' : 'records'}`, { direction: 'top', offset: [0, -14] })
     })
     if (bounds.length > 1) mapRef.current.fitBounds(bounds, { padding: [36, 36], maxZoom: 11 })
     setTimeout(() => mapRef.current?.invalidateSize(), 50)
-  }, [bundles, mode, selectedPointId, onSelect])
+  }, [bundles, mode, pointIndexById, selectedPointId, onSelect])
 
   return <div ref={containerRef} className="map-canvas" />
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => {
+    const entities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }
+    return entities[char]
+  })
 }
 
 function buildRentRows() {
   return [] as {
     id: string
     pointId: string
+    mapIndex: number
     name: string
     market: string
     metric: number
@@ -662,6 +750,7 @@ function buildSaleRows() {
   return [] as {
     id: string
     pointId: string
+    mapIndex: number
     name: string
     market: string
     metric: number
@@ -670,7 +759,8 @@ function buildSaleRows() {
   }[]
 }
 
-function compareRows<T extends { metric: number; sf: number; name: string; market: string }>(a: T, b: T, sortKey: SortKey) {
+function compareRows<T extends { mapIndex: number; metric: number; sf: number; name: string; market: string }>(a: T, b: T, sortKey: SortKey) {
+  if (sortKey === 'map') return a.mapIndex - b.mapIndex || a.name.localeCompare(b.name)
   if (sortKey === 'metric' || sortKey === 'sf') return b[sortKey] - a[sortKey]
   return a[sortKey].localeCompare(b[sortKey])
 }

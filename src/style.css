@@ -15,12 +15,12 @@
   --page: #f4f6f8;
   --panel: #ffffff;
   --panel-soft: #f8fafc;
-  --rent: #008f8f;
-  --rent-deep: #007477;
-  --rent-soft: #e4f5f4;
-  --sale: #c26a2e;
-  --sale-deep: #a9531f;
-  --sale-soft: #fff2e8;
+  --rent: #2f6f9f;
+  --rent-deep: #24587f;
+  --rent-soft: #e8f2fa;
+  --sale: #9f3a5a;
+  --sale-deep: #7f2d47;
+  --sale-soft: #faeaf0;
 }
 
 * {
@@ -138,7 +138,7 @@ p {
 
 .workspace {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) 265px;
+  grid-template-rows: auto minmax(0, 1fr) clamp(360px, 36vh, 460px);
   gap: 12px;
   min-width: 0;
   min-height: 0;
@@ -213,11 +213,11 @@ p {
 
 .workspace-nav button.active {
   color: #ffffff;
-  background: linear-gradient(180deg, #02a6a3 0%, var(--rent-deep) 100%);
+  background: linear-gradient(180deg, #3b7fac 0%, var(--rent-deep) 100%);
 }
 
 .sale .workspace-nav button.active {
-  background: linear-gradient(180deg, #d77a35 0%, var(--sale-deep) 100%);
+  background: linear-gradient(180deg, #b54769 0%, var(--sale-deep) 100%);
 }
 
 .filter-section {
@@ -454,33 +454,44 @@ input[type="range"] {
 }
 
 .map-marker {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 3px solid #ffffff;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #ffffff;
   border-radius: 999px;
   color: #ffffff;
   background: var(--rent);
-  box-shadow: 0 6px 13px rgba(15, 23, 42, 0.26);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(47, 111, 159, 0.18);
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
 }
 
-.map-marker span {
-  font-size: 12px;
+.map-marker:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px) scale(1.04);
+}
+
+.marker-label {
+  font-size: 15px;
+  line-height: 1;
   font-weight: 900;
+  letter-spacing: 0;
 }
 
 .map-marker.sale {
   background: var(--sale);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(159, 58, 90, 0.2);
 }
 
 .map-marker.target {
-  width: 72px;
-  height: 42px;
+  width: 76px;
+  height: 44px;
   padding: 7px 9px;
   border-radius: 8px;
   background: #ffffff;
   border-color: #ffffff;
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(13, 44, 72, 0.16);
 }
 
 .map-marker.target img {
@@ -490,12 +501,28 @@ input[type="range"] {
 }
 
 .map-marker.selected {
-  outline: 4px solid rgba(0, 143, 143, 0.22);
-  transform: scale(1.08);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.28), 0 0 0 5px rgba(47, 111, 159, 0.22);
+  transform: scale(1.1);
 }
 
 .sale .map-marker.selected {
-  outline-color: rgba(194, 106, 46, 0.26);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.28), 0 0 0 5px rgba(159, 58, 90, 0.24);
+}
+
+.map-marker.target.selected,
+.sale .map-marker.target.selected {
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.2), 0 0 0 5px rgba(13, 44, 72, 0.14);
+}
+
+.leaflet-tooltip {
+  border: 1px solid rgba(216, 222, 231, 0.96);
+  border-radius: 6px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
 }
 
 .detail-panel {
@@ -682,12 +709,12 @@ input[type="range"] {
 
 table {
   width: 100%;
-  min-width: 980px;
+  min-width: 1020px;
   border-collapse: collapse;
 }
 
 .sale-table table {
-  min-width: 1160px;
+  min-width: 1200px;
 }
 
 th,
@@ -720,13 +747,38 @@ tbody tr:hover {
   background: #f8fbfc;
 }
 
+.map-index-header,
+.map-index-cell {
+  width: 52px;
+  text-align: center;
+}
+
+.table-marker-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--rent);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 900;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px rgba(47, 111, 159, 0.2);
+}
+
+.sale .table-marker-badge {
+  background: var(--sale);
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px rgba(159, 58, 90, 0.22);
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 48px;
   height: 23px;
-  border: 1px solid rgba(0, 143, 143, 0.18);
+  border: 1px solid rgba(47, 111, 159, 0.2);
   border-radius: 999px;
   color: var(--rent-deep);
   background: var(--rent-soft);
