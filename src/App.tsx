@@ -681,9 +681,16 @@ function MapView({
     if (!containerRef.current || mapRef.current) return
     mapRef.current = L.map(containerRef.current, { zoomControl: false }).setView([30.22, -97.76], 9)
     L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // CARTO basemaps now require an API key (tiles render "API KEY REQUIRED"), so use Esri's keyless Light Gray Canvas.
+    const esriCanvas = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas'
+    L.tileLayer(`${esriCanvas}/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`, {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      maxNativeZoom: 16,
+      attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
+    }).addTo(mapRef.current)
+    L.tileLayer(`${esriCanvas}/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, {
+      maxZoom: 19,
+      maxNativeZoom: 16,
     }).addTo(mapRef.current)
     layerRef.current = L.layerGroup().addTo(mapRef.current)
     setTimeout(() => mapRef.current?.invalidateSize(), 100)
